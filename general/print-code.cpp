@@ -1,3 +1,11 @@
+/*
+ * Print code with sphinx
+ * Usage: print-code source-dir outfile
+ * Note: source-dir musn't have / in the end.
+ * compile flags: 
+ * 	std: c++17
+ *	link: filesystem lib
+ * */
 #include <filesystem>
 #include <fstream>
 #include <iostream>
