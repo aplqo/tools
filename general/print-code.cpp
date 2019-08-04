@@ -18,10 +18,10 @@ using fs::is_directory;
 using fs::is_regular_file;
 using fs::path;
 
-const map<const char*, const char*> filetype {
+const map<const path, const char*> filetype {
     { ".c", "c" }, { ".cpp", "c++" }, { ".js", "javascript" }, { ".html", "html" },
     { ".kt", "kotlin" }, { ".cs", "csharp" }, { ".hs", "haskell" }, { ".java", "java" },
-    { ".go", "go" }, { ".lua", "lua" }
+    { ".go", "go" }, { ".lua", "lua" }, { ".h", "cpp" }
 };
 
 class Node
@@ -30,27 +30,28 @@ public:
     Node(const path& p, unsigned int sec)
         : p { p }
         , sec { sec } {};
-    virtual void Write(ofstream& of) const;
+    virtual void Write(ofstream& of);
     virtual bool isEmpty() = 0;
-    virtual ~Node() = 0;
+    virtual ~Node() {};
 
 protected:
-    void print_sec(ofstream& of, string::size_type l) const;
+    void print_sec(ofstream& of, string::size_type l);
     const path p;
     const unsigned int sec;
 
     const static unsigned char section[5];
 };
 const unsigned char Node::section[5] = { '*', '=', '-', '^', '"' };
-void Node::Write(ofstream& of) const
+void Node::Write(ofstream& of)
 {
     const string s = p.filename();
     string::size_type size = s.length();
     print_sec(of, size);
     of << s << endl;
     print_sec(of, size);
+    of << endl;
 }
-void Node::print_sec(ofstream& of, string::size_type l) const
+void Node::print_sec(ofstream& of, string::size_type l)
 {
     for (string::size_type i = 0; i < l; i++)
     {
@@ -64,16 +65,17 @@ class File : public Node
 public:
     File(const path& p, unsigned int sec)
         : Node(p, sec) {};
-    void Write(ofstream& of) const;
+    void Write(ofstream& of);
     bool isEmpty() { return false; };
 };
-void File::Write(ofstream& of) const
+void File::Write(ofstream& of)
 {
-    const char* lang = filetype.at(p.extension().c_str());
+    const char* lang = filetype.at(p.extension());
     this->Node::Write(of);
-    of << ".. literalinclude:: " << p << endl;
+    of << endl;
+    of << ".. literalinclude:: " << p.c_str() << endl;
     of << "\t"
-       << ":language:" << lang << endl;
+       << ":language: " << lang << endl;
     of << "\t"
        << ":linenos:" << endl;
     of << endl;
@@ -105,17 +107,16 @@ void Directory::Read()
         {
             const path tmp = i.path();
             {
-                const char* e = tmp.extension().c_str();
-                if (filetype.find(e) == filetype.end())
+                if (filetype.find(tmp.extension()) == filetype.end())
                     continue;
             }
-            File* f = new File(tmp, sec + 1);
+            File* f = new File(tmp, (sec + 1));
             child.push_back(f);
             continue;
         }
         if (i.is_directory())
         {
-            Directory* d = new Directory(i, sec + 1);
+            Directory* d = new Directory(i, (sec + 1));
             d->Read();
             if (!d->isEmpty())
             {
@@ -144,7 +145,7 @@ bool Directory::isEmpty()
     bool result = true;
     for (auto i : child)
     {
-        result |= i->isEmpty();
+        result &= i->isEmpty();
     }
     return result;
 }
