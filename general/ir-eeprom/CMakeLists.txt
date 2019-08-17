@@ -1,7 +1,10 @@
 ﻿cmake_minimum_required (VERSION 3.8)
+cmake_policy(SET CMP0074 NEW)
 
-find_package(Boost COMPONENTS property_tree REQUIRED)
-include_directories(${Boost_INCLUD_DIRS})
+aux_source_directory(. src)
 
-add_executable (ir-eeprom "ir-eeprom.cpp")
+find_package(Boost REQUIRED)
+include_directories(${Boost_INCLUDE_DIRS})
+
+add_executable (ir-eeprom ${src})
 target_link_libraries(ir-eeprom ${Boost_LIBRARIES})
