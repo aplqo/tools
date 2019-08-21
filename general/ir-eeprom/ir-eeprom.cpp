@@ -11,93 +11,113 @@ using std::cout;
 using std::endl;
 using std::ios;
 using std::ofstream;
-using std::string;
 using std::stoi;
+using std::string;
 
 namespace ir_eeprom
 {
     uint16_t eeprom;
+    enum type
+    {
+        NEC = 0,
+        SIRC = 1
+    };
+    static uint8_t get(const ptree& p, const char* path)
+    {
+        string&& s = p.get<string>(path);
+        return stoi(s, nullptr, 16);
+    }
     void convert(const ptree& p, ofstream& of)
     {
-        auto pos = of.tellp();
-        of.seekp(of.beg, 0);
-        of << static_cast<uint16_t>(eeprom + pos);
-        of.seekp(pos);
+        {
+            uint16_t pos = of.tellp();
+            uint16_t e_pos = pos + eeprom;
+            e_pos = (e_pos >> 8) | (e_pos << 8);
+            of.seekp(0, of.beg);
+            of.write(reinterpret_cast<const char*>(&e_pos), 2);
+            of.seekp(pos, of.beg);
+        }
         ptree rules = p.get_child("config.convert");
         for (auto i : rules)
         {
             auto& rule = i.second;
-            of << 0xee << 2;
-            string type = rule.get<string>("frame.type");
+            of.put(0xee);
+            of.put(2);
+            string type = rule.get<string>("type");
             if (type == "NEC")
             {
-                of << 0x00;
+                of.put(NEC);
             }
             else if (type == "SIRC")
             {
-                of << 0x01;
+                of.put(SIRC);
             }
-            of << rule.get<uint8_t>("frame.user");
-            of << rule.get<uint8_t>("frame.key");
-            of << rule.get<uint8_t>("frame.result");
+            of.put(get(rule, "user"));
+            of.put(get(rule, "key"));
+            of.put(get(rule, "result"));
         }
     }
     void filter(const ptree& p, ofstream& of)
     {
-        auto pos = of.tellp();
-        of.seekp(of.beg, 2);
-        of << static_cast<uint16_t>(eeprom + pos);
-        of.seekp(pos);
+        {
+            uint16_t pos = of.tellp();
+            uint16_t e_pos = pos + eeprom;
+            e_pos = (e_pos >> 8) | (e_pos << 8);
+            of.seekp(2, of.beg);
+            of.write(reinterpret_cast<const char*>(&e_pos), 2);
+            of.seekp(pos, of.beg);
+        }
         ptree rules = p.get_child("config.filter");
         for (auto i : rules)
         {
             auto& rule = i.second;
             uint8_t size = 0;
             auto pSize = of.tellp().operator+(1);
-            of << 0xff << 0;
-            string type = rule.get<string>("rule.type");
+            of.put(0xff);
+            of.put(0);
+            string type = rule.get<string>("type");
             if (type == "NEC")
             {
-                of << 0x00;
+                of.put(NEC);
             }
             else if (type == "SIRC")
             {
-                of << 0x01;
+                of.put(SIRC);
             }
-            of << 0x00;
-            ptree users = rule.get_child("rule.users");
+            of.put(0x00);
+            ptree users = rule.get_child("users");
             for (auto i : users)
             {
                 size++;
-                of << i.second.get_value<uint8_t>();
+                of.put(stoi(i.second.get_value<string>(), nullptr, 16));
             }
             of.seekp(pSize);
-            of << size;
-            of.seekp(of.end);
+            of.put(size);
+            of.seekp(0, of.end);
         }
     }
     void repeat(const ptree& p, ofstream& of)
     {
-        of.seekp(of.beg, 4);
         auto rules = p.get_child("config.repeat");
         for (auto i : rules)
         {
             auto rule = i.second;
             uint8_t size = 0;
-            of << 0xcc;
+            of.put(0xcc);
             auto pos = of.tellp();
-            of << 0 << 0x01;
-            of << rule.get<uint8_t>("frame.user");
-            of << rule.get<uint8_t>("frame.repeat");
-            ptree keys = rule.get_child("frame.keys");
+            of.put(0);
+            of.put(0x01);
+            of.put(get(rule, "user"));
+            of.put(get(rule, "repeat"));
+            ptree keys = rule.get_child("keys");
             for (auto j : keys)
             {
                 size++;
-                of << j.second.get<uint8_t>("keys.key");
+                of.put(stoi(j.second.get_value<string>(), nullptr, 16));
             }
             of.seekp(pos);
-            of << size;
-            of.seekp(of.end);
+            of.put(size);
+            of.seekp(0, of.end);
         }
     }
 }
@@ -113,12 +133,13 @@ int main(int argc, char* argv[])
     ptree p;
     read_xml(argv[1], p);
 
-	ire::eeprom = stoi(argv[2],nullptr, 16);
+    ire::eeprom = stoi(argv[2], nullptr, 16);
 
     ofstream of(argv[3], ios::out | ios::binary);
-    ire::convert(p, of);
-    ire::filter(p, of);
+    of.seekp(0x04);
     ire::repeat(p, of);
+    ire::filter(p, of);
+    ire::convert(p, of);
     of.flush();
     of.close();
 
