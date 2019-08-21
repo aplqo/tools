@@ -44,21 +44,30 @@ namespace ir_eeprom
         ptree rules = p.get_child("config.convert");
         for (auto i : rules)
         {
-            auto& rule = i.second;
-            of.put(0xee);
-            of.put(2);
-            string type = rule.get<string>("type");
-            if (type == "NEC")
+            ptree group = i.second;
+            uint8_t user = get(group, "user");
+            uint8_t type;
             {
-                of.put(NEC);
+                string typ = group.get<string>("type");
+                if (typ == "NEC")
+                {
+                    type = NEC;
+                }
+                else if (typ == "SIRC")
+                {
+                    type = SIRC;
+                }
             }
-            else if (type == "SIRC")
+            for (auto j : group.get_child("rules"))
             {
-                of.put(SIRC);
+                of.put(0xee);
+                of.put(2);
+                of.put(type);
+                of.put(user);
+                auto& rule = j.second;
+                of.put(get(rule, "key"));
+                of.put(get(rule, "result"));
             }
-            of.put(get(rule, "user"));
-            of.put(get(rule, "key"));
-            of.put(get(rule, "result"));
         }
     }
     void filter(const ptree& p, ofstream& of)
