@@ -1,6 +1,6 @@
 ﻿/*
 ir-eeprom
-Version: v0.1
+Version: v1.0.1
 */
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/xml_parser.hpp>
@@ -115,7 +115,7 @@ namespace ir_eeprom
         for (auto i : rules)
         {
             auto rule = i.second;
-            uint8_t size = 0;
+            uint8_t size = 1;
             of.put(0xcc);
             auto pos = of.tellp();
             of.put(0);
