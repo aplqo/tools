@@ -1,4 +1,8 @@
-﻿#include <boost/property_tree/ptree.hpp>
+﻿/*
+ir-eeprom
+Version: v0.1
+*/
+#include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/xml_parser.hpp>
 #include <fstream>
 #include <iostream>
