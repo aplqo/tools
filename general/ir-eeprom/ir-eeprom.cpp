@@ -153,6 +153,13 @@ int main(int argc, char* argv[])
     ire::repeat(p, of);
     ire::filter(p, of);
     ire::convert(p, of);
+
+    //write extra 0x00
+    for (unsigned int i = 0; i < 5; i++)
+    {
+        of.put(0x00);
+    }
+
     of.flush();
     of.close();
 
